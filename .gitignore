@@ -7,3 +7,5 @@ __pycache__/
 *.tmp
 /grocery_list.txt
 /grocery_plan.txt
+/LinkedInPost.md
+/*.mp4

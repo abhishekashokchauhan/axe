@@ -34,41 +34,60 @@ repo and open it in a browser).
 
 ## What you get
 
+A real run for an 11-item list (30 Sep 2026, Gota, Ahmedabad). In the Terminal the savings
+are in orange and the grand total sits on an orange band:
+
 ```
-WHAT TO BUY WHERE   (live prices and fees as of 29 Sep 2026, 10:14 AM)
-=========================================================================================================
-ZEPTO                                               |  SWIGGY INSTAMART
---------------------------------------------------  |  --------------------------------------------------
-1 x Tata Simply Better Groundnut Oil        ₹1,549  |  1 x Amul Processed Cheese Block               ₹129
-    1 pc (5 L)                                      |      200 g
-1 x Amul Salted Butter                        ₹310  |  1 x Dettol Skincare Handwash Refill          ₹158
-    1 pack (500 g)                                  |      1.35 ltr  (nearest size)
-2 x NOICE Idli Dosa Batter                    ₹170  |  --------------------------------------------------
-    1 pack (500 g)  (2 packs = your 1kg)            |  Items                                         ₹287
---------------------------------------------------  |  + Handling Fee                                 ₹12
-Items                                       ₹2,029  |  + Delivery Partner Fee                        FREE
-TO PAY (live bill)                          ₹2,029  |  TO PAY (live bill)                            ₹299
-=========================================================================================================
-GRAND TOTAL (all carts)                                                                            ₹2,328
+🛒 axe  ·  11 items from grocery_list.txt
+✓ Searched 11 items on Zepto and Swiggy Instamart  11.2s
+✓ Claude chose the product for each line  12.1s
+✓ Live bills read · fees included  6.4s
 
-INSIGHTS
-  Coverage
-  • Your list: 5 items -- all 5 found
-  • Pack size: 3 exact, 1 exact using several packs, 1 nearest size (your size isn't sold)
-      = Noice idli batter: asked 1 kg -> getting 2 x 500 g on Zepto (your size isn't sold as one pack)
-      ~ Dettol liquid refill: asked 900 ml -> getting 1.35 L (+50%) on Swiggy Instamart
-  Money
-  • Saved on MRP: ₹412 (15%) -- items at MRP ₹2,728, you pay ₹2,316
-  • Fees: ₹12 (0.5% of the total)
-  • Biggest price differences: Tata groundnut oil ₹240 cheaper on Zepto; Dettol liquid refill ₹21 cheaper on ...
-  • Everything on Zepto: ₹2,349 (live bill) -- you save ₹21 with this split
+╭───────────────────────────────────────────────┬──────────────────────────────────────────────╮
+│ Swiggy Instamart  ·  7 items                  │ Zepto  ·  3 items                            │
+├───────────────────────────────────────────────┼──────────────────────────────────────────────┤
+│ Dettol Skincare Handwash Refill          ₹158 │ Tata Sampann Unpolished Toor Dal        ₹103 │
+│   1.35 L · you asked 900 ml                   │   500 g                                      │
+│ Amul Processed Cheese Block              ₹126 │ Tata Simply Better Groundnut Oil      ₹1,549 │
+│   200 g                                       │   5 L                                        │
+│ 2 × NOICE Idli Dosa Batter                ₹78 │ Amul Salted Butter                      ₹310 │
+│   500 g each · = your 1 kg                    │   500 g                                      │
+│ NOICE Idli Dosa Batter                    ₹39 │                                              │
+│   500 g                                       │                                              │
+│ 2 × Tender Coconut                       ₹170 │                                              │
+│   1 pc each · = your 2 pcs                    │                                              │
+│ Tata Salt Iodised                         ₹28 │                                              │
+│   1 kg                                        │                                              │
+│ Amul Fresh Paneer                         ₹92 │                                              │
+│   200 g                                       │                                              │
+├───────────────────────────────────────────────┼──────────────────────────────────────────────┤
+│ Items                                    ₹691 │ Items                                 ₹1,962 │
+│ Handling fee                              ₹12 │ Delivery fee                            FREE │
+│ Delivery partner fee                     FREE │                                              │
+│ Late night fee                             ₹9 │                                              │
+│ GST and charges                         ₹1.62 │                                              │
+├───────────────────────────────────────────────┼──────────────────────────────────────────────┤
+│ To pay                                   ₹714 │ To pay                                ₹1,962 │
+╰───────────────────────────────────────────────┴──────────────────────────────────────────────╯
+                                       Grand total · 10 of 11 items   ₹2,676                                       
 
-NEXT STEP
-  → Open the Zepto app and add the 3 items in its column above (exact name and pack size). Expected to pay: ₹2,029.
-  → Open the Swiggy Instamart app and add the 2 items in its column above ...
+How this split compares
+This split               ████████████████████▏       ₹2,676           
+All on Zepto¹            ████████████████████▍       ₹2,703 ₹27 saved 
+All on Swiggy Instamart² ██████████████████████▌     ₹2,984 ₹308 saved
+At MRP (items only)      ██████████████████████████  ₹3,453 ₹800 saved
+¹ NOICE Idli Dosa Batter from Swiggy Instamart
+² Amul Salted Butter from Zepto
+
+✓ 10 of 11 found · 7 exact size · 2 as several packs · 1 nearest size
+✗ Amul Gold milk pouch: sold out right now
+↓ Tata Simply Better Groundnut Oil is ₹303 cheaper on Zepto (₹1,549 vs ₹1,852 on Swiggy Instamart)
+
+→ Add these in your Zepto and Swiggy Instamart apps. Nothing was ordered.
+Prices and fees live at 30 Sep, 12:00 AM · full details: grocery_plan.txt
 ```
 
-*(Illustrative — your prices depend on your address and the moment you run it.)*
+*Your prices depend on your address and the moment you run it.*
 
 ---
 
@@ -105,7 +124,8 @@ axe/
 └── grocery_plan.txt          ← the latest result (not tracked by git)
 ```
 
-Each run takes about a minute; the result is also saved to **`grocery_plan.txt`**.
+Each run takes about 30 seconds. The result, plus the full details (Claude's choice for every
+line, every live bill), is saved to **`grocery_plan.txt`**.
 Tip: drag `Grocery Compare.command` to the Dock or Finder sidebar for one-click access.
 
 > If macOS says the file "can't be opened", right-click it → **Open** → **Open**.
@@ -136,8 +156,9 @@ Tender coconut, 2 pieces
 
 1. **Search** — every item on both apps, for your saved address.
 2. **Pick the product** — Claude decides which listing *is* your item (right brand, right
-   kind — toor dal, not chana dal) and, among those that fit, the best value per kg/L.
-   Premium variants (organic, …) get no preference.
+   kind — toor dal, not chana dal; right format — a milk *pouch* isn't a tetra pack) and, among
+   those that fit, the best value per kg/L. Premium variants (organic, …) get no preference.
+   If nothing fits because it's sold out, the report says so instead of substituting.
 3. **Pick the pack** (done by code, so it's predictable):
    your exact size → identical packs that make it up exactly → the best-value pack between
    0.75× and 2× your size. Only packs in stock in the quantity you need are considered.
@@ -145,7 +166,11 @@ Tender coconut, 2 pieces
    puts a basket in each app's cart, reads the bill (Zepto: order *preview*), and puts the
    cart back. It quotes the full list on each app, then whichever split looks cheapest, until
    the winning split is confirmed by live bills.
-5. **Report** — both carts side by side, totals, insights, and what to do next.
+5. **Report** — both carts side by side with every fee, the grand total, how this split
+   compares with buying everything on one app (and with MRP), and what to do next.
+
+Both apps are searched in parallel (at most 4 requests at a time per app), and Claude
+decides the list in parallel chunks, so a run takes about 30 seconds.
 
 ## What axe touches (and what it doesn't)
 
@@ -162,6 +187,7 @@ Tender coconut, 2 pieces
 
 - macOS only; Zepto and Swiggy Instamart only. Blinkit, BigBasket, Flipkart Minutes, Amazon Now
   and DMart have **no official MCP** yet — they'll be added when they do.
+- Up to 50 items per run.
 - Placing the order from axe (with your explicit confirmation) is planned.
 
 ## Uninstall
@@ -171,13 +197,16 @@ Delete the `axe` folder and `~/.grocer/`.
 ## For developers
 
 ```sh
-.venv/bin/pytest                               # tests
-.venv/bin/python -m grocer --help              # all commands
-.venv/bin/python -m grocer quote-test zepto    # live bill for the first list item only
+.venv/bin/pytest                                   # tests
+.venv/bin/python -m grocer --help                  # all commands
+.venv/bin/python -m grocer compare --details       # also show Claude's choices and every live bill
+.venv/bin/python -m grocer compare --list FILE     # run another list without editing grocery.yaml
+.venv/bin/python -m grocer quote-test zepto        # live bill for the first list item only
 ```
 
 Code lives in `grocer/`: `platforms/` (Zepto, Instamart adapters), `advisor.py` (Claude +
-pack choice), `quote.py` / `livefees.py` (live bills), `optimizer.py`, `report.py`.
+pack choice), `quote.py` / `livefees.py` (live bills), `optimizer.py` (the split),
+`pretty.py` (the result screen), `report.py` (the detailed report in `grocery_plan.txt`).
 
 ## License
 
