@@ -1,8 +1,15 @@
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
 [project]
 name = "grocer"
 version = "0.1.0"
 description = "Compare grocery prices across Zepto and Instamart via their official MCP servers and pick the cheapest split."
 requires-python = ">=3.12"
+license = "Apache-2.0"
+license-files = ["LICENSE", "NOTICE"]
+authors = [{ name = "Abhishek Chauhan" }]
 dependencies = ["mcp>=2.2", "pyyaml>=6"]
 
 [project.optional-dependencies]

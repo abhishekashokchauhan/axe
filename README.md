@@ -178,3 +178,12 @@ Delete the `axe` folder and `~/.grocer/`.
 
 Code lives in `grocer/`: `platforms/` (Zepto, Instamart adapters), `advisor.py` (Claude +
 pack choice), `quote.py` / `livefees.py` (live bills), `optimizer.py`, `report.py`.
+
+## License
+
+Copyright 2026 Abhishek Chauhan. Licensed under the [Apache License 2.0](LICENSE).
+
+You may use, modify and distribute axe, including commercially, provided you keep the
+copyright notice and license, state any changes you make, and include the [`NOTICE`](NOTICE)
+file (which credits the author) with your distribution.
+
