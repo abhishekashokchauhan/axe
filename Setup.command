@@ -6,18 +6,18 @@ REPO="${0:A:h}"   # this folder, wherever axe was cloned
 LIST="$REPO/grocery_list.txt"
 export PATH="$HOME/.local/bin:/opt/homebrew/bin:/usr/local/bin:$PATH"
 
-ok()    { print -P "  %F{green}✓%f $1"; }
+TTY=0; [[ -t 1 ]] && TTY=1
+doing() { (( TTY )) && print -n -- "… $1\r"; }                    # shown while a step runs
+clear_line() { (( TTY )) && print -n -- "\r\e[K"; }
+ok()    { clear_line; print -P "%F{green}✓%f $1"; }
 pause() { [[ -t 0 ]] && read -k 1 "?Press any key to close."; }   # only when run in a Terminal window
-fail()  { print -P "\n  %F{red}✗ $1%f\n"; pause; exit 1; }
-step()  { print -P "\n%B$1%b"; }
+fail()  { clear_line; print -P "%F{red}✗ $1%f"; pause; exit 1; }
 
-print -P "%B🛒 axe setup%b  ($REPO)"
+print -P "%B🛒 axe setup%b"
 cd "$REPO" || fail "can't open $REPO"
 
-step "1/5  Checking your Mac"
+doing "Checking your Mac"
 [[ "$(uname)" == "Darwin" ]] || fail "axe supports macOS only for now."
-ok "macOS $(sw_vers -productVersion)"
-
 PY=""
 for c in python3.13 python3.12 python3; do
   if command -v $c >/dev/null && $c -c 'import sys; sys.exit(sys.version_info < (3, 12))' 2>/dev/null; then
@@ -25,45 +25,40 @@ for c in python3.13 python3.12 python3; do
   fi
 done
 [[ -n "$PY" ]] || fail "Python 3.12 or newer is needed.
-    Install it with Homebrew:  brew install python@3.12
-    or from https://www.python.org/downloads/macos/  -- then run Setup again."
-ok "Python $($PY -c 'import platform; print(platform.python_version())')"
+  Install it with Homebrew:  brew install python@3.12
+  or from https://www.python.org/downloads/macos/  -- then run Setup again."
+ok "macOS $(sw_vers -productVersion) · Python $($PY -c 'import platform; print(platform.python_version())')"
 
-step "2/5  Checking Claude Code (it chooses the products)"
-command -v claude >/dev/null || fail "Claude Code isn't installed.
-    Install it from https://claude.com/claude-code , run  claude  once in Terminal to sign in,
-    then run Setup again."
-ok "Claude Code $(claude --version 2>/dev/null | head -1)"
-if (cd /tmp && claude -p "Reply with OK" --tools "" --no-session-persistence --output-format json 2>/dev/null) \
+doing "Checking Claude Code"
+command -v claude >/dev/null || fail "Claude Code isn't installed (it chooses the products).
+  Install it from https://claude.com/claude-code , run  claude  once in Terminal to sign in,
+  then run Setup again."
+if ! (cd /tmp && claude -p "Reply with OK" --tools "" --no-session-persistence --output-format json 2>/dev/null) \
     | grep -q '"is_error":false'; then
-  ok "signed in"
-else
   fail "Claude Code is installed but not signed in.
-    Open Terminal, run  claude  and sign in, then run Setup again."
+  Open Terminal, run  claude  and sign in, then run Setup again."
 fi
+ok "Claude Code $(claude --version 2>/dev/null | awk '{print $1}') · signed in"
 
-step "3/5  Installing axe (inside this folder only)"
+doing "Installing axe"
 [[ -x .venv/bin/python ]] || "$PY" -m venv .venv || fail "couldn't create the Python environment"
-.venv/bin/python -m pip install -q --upgrade pip >/dev/null && .venv/bin/python -m pip install -q -e . \
+.venv/bin/python -m pip install -q --upgrade pip >/dev/null && .venv/bin/python -m pip install -q -e . >/dev/null \
   || fail "installing dependencies failed (are you online?)"
 chmod +x "Grocery Compare.command"
-ok "installed"
+ok "Installed in this folder"
 
-step "4/5  Your grocery list"
 if [[ -f "$LIST" ]]; then
-  ok "kept your existing list: grocery_list.txt"
+  ok "Kept your grocery_list.txt"
 else
-  cp examples/grocery_list.txt "$LIST" && ok "created grocery_list.txt from the sample"
+  cp examples/grocery_list.txt "$LIST" && ok "grocery_list.txt created from the sample"
 fi
 
-step "5/5  Logging in to Zepto and Swiggy Instamart"
-print "  A browser tab opens for each app (phone number + OTP). Already logged in? Nothing opens."
-.venv/bin/python -m grocer login zepto     || fail "Zepto login didn't finish -- run Setup again to retry."
-.venv/bin/python -m grocer login instamart || fail "Instamart login didn't finish -- run Setup again to retry."
-ok "both apps connected"
+doing "Connecting Zepto and Swiggy Instamart"
+# A browser tab opens only if an app still needs a login (phone number + OTP).
+.venv/bin/python -m grocer login zepto --quiet     || fail "Zepto login didn't finish -- run Setup again to retry."
+.venv/bin/python -m grocer login instamart --quiet || fail "Instamart login didn't finish -- run Setup again to retry."
+ok "Zepto and Swiggy Instamart connected"
 
-print -P "\n%F{green}%B✓ All set!%b%f  In this folder ($REPO):
-  1. Edit  grocery_list.txt  (it opens now) and save it.
-  2. Double-click  Grocery Compare.command .\n"
+print -P "\n%F{green}%B✓ All set!%b%f Edit grocery_list.txt (opening now), save it, then run Grocery Compare.command"
 [[ -t 0 ]] && open -e "$LIST"
 pause

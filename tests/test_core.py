@@ -88,3 +88,42 @@ def test_optimizer_compares_value_not_pack_price():
     plan = optimize(items, prices, schedule_fees({}), scales)
     assert set(plan.baskets) == {"zepto"} and plan.total == 310 and plan.value == 310
     assert set(optimize(items, prices, schedule_fees({})).baskets) == {"instamart"}  # without scaling
+
+
+def _random_list(rnd, n):
+    items = [(f"i{k}", 1) for k in range(n)]
+    prices = {}
+    for k in range(n):
+        base = rnd.choice([30, 60, 100, 150, 300, 800, 1500])
+        prices[f"i{k}"] = {"zepto": round(base * rnd.uniform(0.9, 1.1)), "instamart": round(base * rnd.uniform(0.9, 1.1))}
+        if rnd.random() < 0.1:
+            prices[f"i{k}"].pop(rnd.choice(["zepto", "instamart"]))
+    fees = schedule_fees({
+        "zepto": FeeSchedule(fees=(Fee("small", 35, below=99), Fee("delivery", 30, below=rnd.choice([149, 199, 299])))),
+        "instamart": FeeSchedule(fees=(Fee("handling", 12), Fee("small", 20, below=199),
+                                       Fee("delivery", 30, below=rnd.choice([199, 399])))),
+    })
+    return items, prices, fees
+
+
+def test_long_list_search_matches_exact_answer(monkeypatch):
+    import random
+    from grocer import optimizer
+    rnd = random.Random(7)
+    for _ in range(60):
+        items, prices, fees = _random_list(rnd, rnd.randint(4, 11))
+        exact = optimize(items, prices, fees)
+        monkeypatch.setattr(optimizer, "EXHAUSTIVE_LIMIT", 1)  # force the long-list search
+        searched = optimize(items, prices, fees)
+        monkeypatch.setattr(optimizer, "EXHAUSTIVE_LIMIT", 1 << 15)
+        assert abs(searched.value - exact.value) < 0.01
+
+
+def test_fifty_items_are_fast():
+    import random
+    import time
+    items, prices, fees = _random_list(random.Random(1), 50)
+    t = time.monotonic()
+    plan = optimize(items, prices, fees)
+    assert plan is not None and time.monotonic() - t < 2
+    assert plan.value <= greedy(items, prices, fees).value + 1e-9

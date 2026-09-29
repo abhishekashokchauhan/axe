@@ -13,8 +13,10 @@ If an app can't be quoted at all (full-basket quote fails), its fees fall back t
 estimate from past orders and the output says so.
 """
 
-from collections.abc import Awaitable, Callable
+from collections.abc import Awaitable, Callable, Iterable
 from dataclasses import dataclass, field
+
+import anyio
 
 from grocer.optimizer import FeeSchedule, Plan, optimize
 from grocer.quote import Quote
@@ -65,18 +67,33 @@ class LiveFees:
                         f"fees ₹{q.fee_total:g} ({', '.join(f'{l} ₹{a:g}' for l, a in q.fees) or 'none'})")
 
 
+    async def quote_many(self, pairs: Iterable[tuple[str, frozenset[str]]]) -> None:
+        """Quote several baskets: apps in parallel, each app's baskets one after another
+        (a quote fills that app's single cart, so two quotes on one app can't overlap)."""
+        by_app: dict[str, list[frozenset[str]]] = {}
+        for p, names in pairs:
+            if names and names not in by_app.setdefault(p, []):
+                by_app[p].append(names)
+
+        async def one_app(p: str, baskets: list[frozenset[str]]) -> None:
+            for names in baskets:
+                await self.quote(p, names)
+
+        async with anyio.create_task_group() as tg:
+            for p, baskets in by_app.items():
+                tg.start_soon(one_app, p, baskets)
+
+
 async def live_optimize(
     items: list[tuple[str, int]],
     prices: dict[str, dict[str, float]],
     scales: dict[str, dict[str, float]],
     live: LiveFees,
 ) -> Plan | None:
-    for platform in live.quoters:
-        full = frozenset(n for n, _ in items if platform in prices.get(n, {}))
-        if not full:
-            continue
-        await live.quote(platform, full)
-        if live.quotes.get((platform, full)) is None:
+    fulls = {p: frozenset(n for n, _ in items if p in prices.get(n, {})) for p in live.quoters}
+    await live.quote_many((p, names) for p, names in fulls.items() if names)
+    for platform, full in fulls.items():
+        if full and live.quotes.get((platform, full)) is None:
             live.broken[platform] = "live quote failed; fees estimated from past orders"
 
     plan = None
@@ -89,6 +106,5 @@ async def live_optimize(
                    and p in live.quoters and p not in live.broken]
         if not pending:
             return plan
-        for p, names in pending:
-            await live.quote(p, names)
+        await live.quote_many(pending)
     return optimize(items, prices, live.fee_fn, scales)

@@ -18,8 +18,9 @@ class Scenario:
     """Buying the whole list on one app (from that app's live full-basket quote)."""
 
     platform: str
-    total: float | None  # None: not possible (missing items) or quote failed
-    missing: tuple[str, ...] = ()
+    total: float | None  # None: quote failed
+    missing: tuple[str, ...] = ()  # items this app doesn't sell
+    topup: tuple[str, ...] = ()  # other apps the missing items are bought on (then total includes them)
 
 
 def _money(x: float) -> str:
@@ -231,3 +232,10 @@ def render(
     lines.append("  Your carts were NOT changed -- the apps' carts can't be filled from here. Nothing has been ordered.")
     lines.append(f"  Prices and fees were live at {quoted_at}; they can change (surge, rain), so check the total in the app.")
     return "\n".join(lines)
+
+
+def _plan_pick(plan: Plan, by_name: dict[str, Decision], name: str):
+    for p, b in plan.baskets.items():
+        if any(n == name for n, _, _ in b.lines):
+            return p, by_name[name].picks[p]
+    return None, None

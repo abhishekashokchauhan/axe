@@ -22,6 +22,7 @@ SIZE_WINDOW = (0.75, 2.0)  # acceptable pack size as a multiple of the requested
 EXACT_TOLERANCE = 0.01  # "500 g" vs "0.5 kg" etc.
 MAX_PACKS = 6  # most identical packs combined to make up the exact quantity (2 x 500 g = 1 kg)
 MAX_CANDIDATES_PER_PLATFORM = 20
+CHUNKS = 3  # parallel Claude calls per run (measured: 28 s -> 13.5 s for 11 items)
 _UNIT_LABEL = {"mass": "100 g", "volume": "100 ml", "count": "piece"}
 
 
@@ -61,6 +62,7 @@ class Decision:
     product: str  # the product Claude settled on, in words
     picks: dict[str, Candidate | None]  # platform -> chosen pack (None = not sold there)
     reason: str
+    label: str = ""  # short display name, e.g. "Tata Sampann Toor Dal"
 
     def size_note(self, platform: str) -> str:
         c = self.picks.get(platform)
@@ -134,7 +136,10 @@ Rules, in priority order:
 coconut", "idly rice organic") may be any brand. Allow for spelling variants and typos \
 (idly/idli, "idly better" means idli batter). Where the item's wording \
 leaves room (e.g. "Dettol liquid refill"), choose the most common product people mean by \
-it. Never choose a product that doesn't fit just because it is cheap.
+it. Never choose a product that doesn't fit just because it is cheap. Format words in \
+the item (pouch, tetra pack, bottle, refill, block, tub, cup, can, jar) are part of the \
+product: "milk pouch" is not UHT milk in a tetra pack. If only other formats are listed, the \
+item isn't available -- use empty lists.
 2. Value: among products that fit, choose the best value. Compare products by the price \
 per unit of the pack that would actually be bought: the [EXACT SIZE] pack if the product \
 has one, else an [EXACT SIZE as N packs] option, otherwise its cheapest-per-unit pack. Premium variants (organic, etc.) get no \
@@ -148,7 +153,9 @@ You choose the product, not the pack size. For each app, list the ids of EVERY c
 that is the chosen product, in any pack size (the program then buys the exact requested \
 size if it is listed, else identical packs that add up to it exactly, otherwise the \
 best-value pack). Use an empty list for an app that \
-doesn't sell it. Give a one-sentence reason a shopper would find useful.
+doesn't sell it. Give a one-sentence reason a shopper would find useful, and a "label": a \
+short display name for the chosen product -- brand and product only, no pack size, at most \
+36 characters, never cut mid-word (e.g. "Tata Sampann Toor Dal", "Tata Simply Better Groundnut Oil").
 
 Use only the candidate ids given."""
 
@@ -164,10 +171,11 @@ def _schema(platforms: list[str]) -> dict:
                     "properties": {
                         "item": {"type": "string"},
                         "product": {"type": "string"},
+                        "label": {"type": "string"},
                         **{p: {"type": "array", "items": {"type": "string"}} for p in platforms},
                         "reason": {"type": "string"},
                     },
-                    "required": ["item", "product", *platforms, "reason"],
+                    "required": ["item", "product", "label", *platforms, "reason"],
                     "additionalProperties": False,
                 },
             }
@@ -229,9 +237,19 @@ async def decide(
         item.name: {p: candidates_for(item, offers[item.name].get(p, []), p[0]) for p in platforms}
         for item in items
     }
-    result = await _run_claude(_prompt(items, cands), _schema(platforms), model, effort)
+    # Each item is decided on its own, so the list is split into chunks Claude works on in
+    # parallel: about twice as fast as one call, same model and quality.
+    chunks = [c for c in (items[i::CHUNKS] for i in range(CHUNKS)) if c]
+    results: list[dict] = [{}] * len(chunks)
 
-    by_item = {d["item"]: d for d in result["decisions"]}
+    async def run(k: int, chunk: list[Item]) -> None:
+        results[k] = await _run_claude(_prompt(chunk, cands), _schema(platforms), model, effort)
+
+    async with anyio.create_task_group() as tg:
+        for k, chunk in enumerate(chunks):
+            tg.start_soon(run, k, chunk)
+
+    by_item = {d["item"]: d for r in results for d in r.get("decisions", [])}
     decisions = []
     for item in items:
         d = by_item.get(item.name)
@@ -246,5 +264,5 @@ async def decide(
             if bad:
                 d["reason"] += f" [ignored invalid {p} ids {bad}]"
             picks[p] = choose_pack([valid[r] for r in refs if r in valid])
-        decisions.append(Decision(item, d["product"], picks, d["reason"]))
+        decisions.append(Decision(item, d["product"], picks, d["reason"], d.get("label") or d["product"]))
     return decisions

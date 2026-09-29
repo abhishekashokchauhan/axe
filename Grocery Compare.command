@@ -1,7 +1,7 @@
 #!/bin/zsh
 # Grocery Compare -- double-click to price grocery_list.txt (in this folder) on Zepto +
 # Swiggy Instamart and see what to buy where. It never changes your carts or places an
-# order. The result is also saved to grocery_plan.txt in this folder.
+# order. The full details (Claude's choices, the live bills) are saved to grocery_plan.txt.
 
 REPO="${0:A:h}"   # this folder, wherever axe was cloned
 LIST="$REPO/grocery_list.txt"
@@ -18,6 +18,6 @@ if [[ ! -f "$LIST" ]]; then
   open -e "$LIST"; read -k 1 "?Press any key to close."; exit 0
 fi
 
-.venv/bin/python -m grocer compare 2>&1 | tee grocery_plan.txt
+.venv/bin/python -m grocer compare --save grocery_plan.txt
 echo
-read -k 1 "?Done -- also saved to grocery_plan.txt in the axe folder. Press any key to close."
+read -k 1 "?Full details: grocery_plan.txt in the axe folder. Press any key to close."

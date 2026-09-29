@@ -5,6 +5,8 @@ search_products(query) -> {products: [{name, packSize, price, mrp, availableQuan
 productVariantId, isAd}], ...}. Prices are in paise. There is no brand field.
 """
 
+import anyio
+
 from grocer.connection import GuardedSession
 from grocer.fees import Observation
 from grocer.models import Item, Offer
@@ -41,11 +43,18 @@ async def fee_history(session: GuardedSession, limit: int = 10) -> list[Observat
     one lump "fees" charge.
     """
     history = await session.call("list_order_history", {})
+    delivered = [o for o in (history.get("orders") or [])[:limit] if o.get("formattedStatus") == "DELIVERED"]
+    bills: dict[str, dict] = {}
+
+    async def detail(order_id: str) -> None:
+        bills[order_id] = (await session.call("get_order_detail", {"orderId": order_id})).get("billSummary") or {}
+
+    async with anyio.create_task_group() as tg:  # one request per order, all at once
+        for o in delivered:
+            tg.start_soon(detail, o["id"])
     out = []
-    for o in (history.get("orders") or [])[:limit]:
-        if o.get("formattedStatus") != "DELIVERED":
-            continue
-        bill = (await session.call("get_order_detail", {"orderId": o["id"]})).get("billSummary") or {}
+    for o in delivered:
+        bill = bills[o["id"]]
         if "itemTotal" not in bill:
             continue
         fees = {k: v / 100 for k, v in bill.items() if isinstance(v, (int, float)) and ("fee" in k.lower() or "charge" in k.lower())}

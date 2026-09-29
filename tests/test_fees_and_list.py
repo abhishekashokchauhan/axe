@@ -56,3 +56,24 @@ def test_token_scope_check_uses_requested_scope(tmp_path, monkeypatch):
     old = auth.FileTokenStorage("zepto", "tools:read")
     anyio.run(old.set_tokens, tok)
     assert anyio.run(store.get_tokens) is None  # a login made asking read-only must be redone
+
+
+def test_list_limit_is_50_items(tmp_path):
+    from grocer.config import MAX_ITEMS, read_list_file
+    ok = tmp_path / "ok.txt"
+    ok.write_text("\n".join(f"Brand item{n}, 500g" for n in range(MAX_ITEMS)))
+    assert len(read_list_file(ok)) == 50
+    big = tmp_path / "big.txt"
+    big.write_text("\n".join(f"Brand item{n}, 500g" for n in range(MAX_ITEMS + 13)))
+    with pytest.raises(ValueError, match="has 63 items; axe handles up to 50 per run"):
+        read_list_file(big)
+
+
+def test_too_long_list_gives_a_clean_error_not_a_traceback(tmp_path):
+    import subprocess
+    import sys
+    big = tmp_path / "big.txt"
+    big.write_text("\n".join(f"Brand item{n}, 500g" for n in range(51)))
+    r = subprocess.run([sys.executable, "-m", "grocer", "compare", "--list", str(big)], capture_output=True, text=True)
+    assert r.returncode == 1 and "Traceback" not in r.stderr
+    assert "✗ big.txt has 51 items; axe handles up to 50 per run" in r.stderr

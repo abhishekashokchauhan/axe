@@ -8,6 +8,7 @@ from grocer.models import Item
 from grocer.optimizer import Fee, FeeSchedule
 from grocer.units import parse_size
 
+MAX_ITEMS = 50  # per run: keeps searches, Claude and the apps' rate limits sane
 PROJECT_DIR = Path(__file__).resolve().parent.parent
 DEFAULT_CONFIG = PROJECT_DIR / "grocery.yaml"
 
@@ -53,6 +54,18 @@ def parse_list_line(line: str) -> Item | None:
     return Item(name=name, brand=name.split()[0], size=size.replace(" ", ""), qty=qty)
 
 
+def check_items(items: list[Item], source: str) -> list[Item]:
+    if not items:
+        raise ValueError(f"{source} has no items")
+    if len(items) > MAX_ITEMS:
+        raise ValueError(f"{source} has {len(items)} items; axe handles up to {MAX_ITEMS} per run. "
+                         f"Split it into two lists (run one with --list FILE).")
+    names = [i.name for i in items]
+    if len(set(names)) != len(names):
+        raise ValueError(f"{source}: each item may appear only once (use a number of packs instead)")
+    return items
+
+
 def read_list_file(path: Path) -> list[Item]:
     items = []
     for n, line in enumerate(path.read_text().splitlines(), 1):
@@ -62,7 +75,7 @@ def read_list_file(path: Path) -> list[Item]:
             raise ValueError(f"{path.name} line {n}: {e}") from None
         if item:
             items.append(item)
-    return items
+    return check_items(items, path.name)
 
 
 def load_config(path: Path = DEFAULT_CONFIG) -> Config:
@@ -80,11 +93,7 @@ def load_config(path: Path = DEFAULT_CONFIG) -> Config:
     else:
         items = [Item(name=i["name"], brand=i["brand"], size=str(i["size"]), qty=int(i.get("qty", 1)), query=i.get("query"))
                  for i in raw.get("items") or []]
-    if not items:
-        raise ValueError(f"the grocery list {list_file or path} has no items")
-    names = [i.name for i in items]
-    if len(set(names)) != len(names):
-        raise ValueError("each item may appear only once (use a quantity instead)")
+    check_items(items, list_file.name if list_file else path.name)
     fees = {
         p: FeeSchedule(
             min_order=float(f.get("min_order", 0)),

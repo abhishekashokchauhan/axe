@@ -10,7 +10,7 @@ requires-python = ">=3.12"
 license = "Apache-2.0"
 license-files = ["LICENSE", "NOTICE"]
 authors = [{ name = "Abhishek Chauhan" }]
-dependencies = ["mcp>=2.2", "pyyaml>=6"]
+dependencies = ["mcp>=2.2", "pyyaml>=6", "rich>=13"]
 
 [project.optional-dependencies]
 dev = ["pytest>=8"]

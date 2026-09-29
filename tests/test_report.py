@@ -122,3 +122,35 @@ def test_render_multi_pack_line_and_insight():
     assert "2 x NOICE Idli Dosa Batter" in out and "(2 packs = your 1kg)" in out
     assert "Pack size: 3 exact, 1 exact using several packs" in out
     assert "= Noice idly better: asked 1 kg -> getting 2 x 500 g on Zepto (your size isn't sold as one pack)" in out
+
+
+def _real_like():
+    """Numbers from the real 29 Sep run (Instamart ₹726 + ₹12, Zepto ₹2,132)."""
+    def pick(p, name, size, price, mrp, amount, exact=True, packs=1):
+        return Candidate("x", Offer(p, name, name, "", size, price, mrp, True), amount, price / amount * 100, exact, packs)
+    D = [
+        Decision(Item("Amul Gold milk pouch", "Amul", "500ml"), "", {"instamart": pick("instamart", "a", "500 ml", 33, 35, 500),
+                 "zepto": pick("zepto", "a", "500 ml", 35, 35, 500)}, "", "Amul Gold Milk"),
+        Decision(Item("Dettol liquid refill", "Dettol", "900ml"), "", {"instamart": pick("instamart", "d", "1.35 ltr", 158, 199, 1350, False),
+                 "zepto": pick("zepto", "d", "1.35 L", 179, 199, 1350, False)}, "", "Dettol Skincare Refill"),
+        Decision(Item("Noice idli batter", "Noice", "1kg"), "", {"instamart": pick("instamart", "n", "500 g", 39, 45, 500, True, 2),
+                 "zepto": None}, "", "NOICE Idli Dosa Batter"),
+        Decision(Item("Tata groundnut oil", "Tata", "5L"), "", {"instamart": pick("instamart", "o", "5 ltr", 1789, 2099, 5000),
+                 "zepto": pick("zepto", "o", "5 L", 1549, 2099, 5000)}, "", "Tata Simply Better Groundnut Oil"),
+    ]
+    plan = Plan({"instamart": Basket("instamart", [("Amul Gold milk pouch", 1, 33), ("Dettol liquid refill", 1, 158),
+                                                   ("Noice idli batter", 1, 78)]),
+                 "zepto": Basket("zepto", [("Tata groundnut oil", 1, 1549)])}, [])
+    bills = {"instamart": Quote("instamart", 269, (("Handling Fee", 12.0), ("Delivery Partner Fee", 0.0)), 281),
+             "zepto": Quote("zepto", 1549, (("delivery fee", 0.0),), 1549)}
+    return plan, bills, D
+
+
+def test_alternatives_buy_all_you_can_on_one_app_rest_on_other():
+    from grocer.cli import _alternatives
+    items = [("milk", 1), ("batter", 1), ("rice", 1), ("oil", 1), ("salt", 1)]
+    prices = {"milk": {"zepto": 35, "instamart": 33}, "batter": {"instamart": 78}, "rice": {"zepto": 142},
+              "oil": {"zepto": 1549, "instamart": 1789}, "salt": {}}  # salt sold nowhere
+    alts = dict(_alternatives(items, prices, {"zepto": None, "instamart": None}))
+    assert alts["zepto"] == {"zepto": frozenset({"milk", "rice", "oil"}), "instamart": frozenset({"batter"})}
+    assert alts["instamart"] == {"instamart": frozenset({"milk", "batter", "oil"}), "zepto": frozenset({"rice"})}

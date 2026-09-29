@@ -15,7 +15,7 @@ import itertools
 from collections.abc import Callable
 from dataclasses import dataclass, field
 
-MAX_COMBINATIONS = 5_000_000
+EXHAUSTIVE_LIMIT = 1 << 15  # try every split up to this many (15 items sold on both apps); search beyond
 
 
 @dataclass(frozen=True)
@@ -102,7 +102,8 @@ def optimize(
     fee_fn: FeeFn,
     scales: dict[str, dict[str, float]] | None = None,
 ) -> Plan | None:
-    """Exact minimum-value plan.
+    """Minimum-value plan: exact (every split tried) for lists up to EXHAUSTIVE_LIMIT splits,
+    otherwise a local search from good starting plans (see _local_search).
 
     items: [(item name, qty)]; prices: item -> {platform: pack price} (only platforms
     where the chosen pack is in stock); scales: item -> {platform: requested amount /
@@ -115,8 +116,11 @@ def optimize(
     n_combos = 1
     for c in choices:
         n_combos *= len(c)
-    if n_combos > MAX_COMBINATIONS:
-        raise ValueError(f"{n_combos} combinations is too many for exhaustive search")
+    if n_combos > EXHAUSTIVE_LIMIT:
+        best = _local_search(buyable, choices, prices, fee_fn, scales)
+        if best is not None:
+            best.unavailable = unavailable
+        return best
 
     best: Plan | None = None
     best_key = None
@@ -131,6 +135,56 @@ def optimize(
     if best is not None:
         best.unavailable = unavailable
     return best
+
+
+def _local_search(buyable, choices, prices, fee_fn, scales) -> Plan | None:
+    """For long lists: start from sensible plans -- each item where it's best value, and "all
+    you can on app X" for every app (which is how fees are usually avoided) -- then keep
+    moving one item, or two together (e.g. to get a basket past a free-delivery threshold),
+    to another app while that lowers the total. Keeps the best."""
+    def best_for(i):
+        n = buyable[i][0]
+        return min(choices[i], key=lambda p: (prices[n][p] * _scale(scales, n, p), p))
+
+    apps = sorted({p for c in choices for p in c})
+    starts = [[best_for(i) for i in range(len(buyable))]]
+    starts += [[p if p in choices[i] else best_for(i) for i in range(len(buyable))] for p in apps]
+    best, best_key = None, None
+    for assignment in starts:
+        plan = _evaluate(assignment, buyable, prices, fee_fn, scales)
+        improved = True
+        while improved:
+            improved = False
+            for moves in (_single_moves, _pair_moves):
+                for trial in moves(assignment, choices):
+                    cand = _evaluate(trial, buyable, prices, fee_fn, scales)
+                    if cand is not None and (plan is None or cand.value < plan.value - 1e-9):
+                        assignment, plan, improved = trial, cand, True
+                if improved:
+                    break  # restart with single moves after any improvement
+        if plan is not None:
+            key = (round(plan.value, 2), len(plan.baskets), tuple(assignment))
+            if best_key is None or key < best_key:
+                best, best_key = plan, key
+    return best
+
+
+def _single_moves(a, choices):
+    for i in range(len(a)):
+        for p in choices[i]:
+            if p != a[i]:
+                yield a[:i] + [p] + a[i + 1:]
+
+
+def _pair_moves(a, choices):
+    for i in range(len(a)):
+        for j in range(i + 1, len(a)):
+            for p in choices[i]:
+                for q in choices[j]:
+                    if p != a[i] and q != a[j]:
+                        t = a.copy()
+                        t[i], t[j] = p, q
+                        yield t
 
 
 def greedy(items, prices, fee_fn: FeeFn, scales=None) -> Plan | None:

@@ -14,6 +14,7 @@ from contextlib import asynccontextmanager
 from dataclasses import dataclass
 from typing import Any
 
+import anyio
 import httpx2
 from mcp import Client
 from mcp.client.streamable_http import streamable_http_client
@@ -80,6 +81,8 @@ class GuardedSession:
         self.platform = platform
         self._client = client
         self._server_read_only: dict[str, bool] | None = None
+        self._in_flight = anyio.CapacityLimiter(MAX_IN_FLIGHT)
+        self.retries = 0  # "Too Many Requests" answers seen (shown in the run's timings)
 
     async def list_tools(self) -> list[Any]:
         return (await self._client.list_tools()).tools
@@ -104,7 +107,13 @@ class GuardedSession:
         args = args or {}
         if not await self._allowed(tool, args):
             raise GuardViolation(f"refusing to call {self.platform}.{tool} with {sorted(args)}")
-        result = await self._client.call_tool(tool, args)
+        for wait in RETRY_WAITS:  # the apps rate-limit bursts; a refused request didn't happen, so retry
+            async with self._in_flight:
+                result = await self._client.call_tool(tool, args)
+            if not (result.is_error and _RATE_LIMITED.search(_text(result))):
+                break
+            self.retries += 1
+            await anyio.sleep(wait)  # outside the limiter, so the slot is free while we wait
         if result.is_error:
             raise RuntimeError(f"{self.platform}.{tool} failed: {_text(result)}")
         if result.structured_content is not None:
@@ -114,6 +123,11 @@ class GuardedSession:
             return json.loads(text)
         except json.JSONDecodeError:
             return text
+
+
+MAX_IN_FLIGHT = 4  # requests open at once to one app -- every call, so no burst can exceed it
+RETRY_WAITS = (1, 2, 4, 0)  # seconds to wait after each "Too Many Requests"; last attempt gives up
+_RATE_LIMITED = re.compile(r"too many requests|rate.?limit|\b429\b", re.IGNORECASE)
 
 
 def _text(result: Any) -> str:

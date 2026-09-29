@@ -114,7 +114,7 @@ Tip: drag `Grocery Compare.command` to the Dock or Finder sidebar for one-click 
 
 ## Writing your list
 
-One item per line: **name, pack size[, number of packs]**
+One item per line: **name, pack size[, number of packs]**, up to **50 items** per run.
 
 ```
 Amul butter, 500g

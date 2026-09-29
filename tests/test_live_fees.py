@@ -191,3 +191,79 @@ def test_zepto_cart_clear_sets_quantities_to_zero_and_reports_names():
     assert removed == ["2 x Amul Gold Milk"] and z.items == []
     assert z.sent[0]["cartItems"] == [{"productVariantId": "p1", "storeProductId": "s1", "quantity": 0}]
     assert anyio.run(ZeptoCart(z, "addr").clear) == [] and len(z.sent) == 1  # empty cart: no call
+
+
+def test_quote_many_runs_apps_in_parallel_but_one_cart_at_a_time():
+    running, overlap_apps, overlap_same_app = {}, [], []
+
+    def quoter(p):
+        async def q(names):
+            if running.get(p):
+                overlap_same_app.append(p)  # two quotes on one cart at once: must never happen
+            running[p] = True
+            if any(running.get(o) for o in running if o != p):
+                overlap_apps.append(p)
+            await anyio.sleep(0.05)
+            running[p] = False
+            return Quote(p, 100, (), None)
+        return q
+
+    live = LiveFees(quoters={"zepto": quoter("zepto"), "instamart": quoter("instamart")}, fallback={})
+    pairs = [("zepto", frozenset("a")), ("zepto", frozenset("b")), ("instamart", frozenset("a")),
+             ("instamart", frozenset("b")), ("zepto", frozenset("a"))]  # duplicate is quoted once
+    anyio.run(live.quote_many, pairs)
+    assert overlap_apps and not overlap_same_app
+    assert len([k for k in live.quotes if k[0] == "zepto"]) == 2
+
+
+def test_session_retries_when_rate_limited(monkeypatch):
+    from types import SimpleNamespace
+
+    monkeypatch.setattr(connection, "RETRY_WAITS", (0, 0, 0, 0))
+    replies = [("Error: API request failed: Too Many Requests", True), ("Too Many Requests", True), ('{"ok": 1}', False)]
+
+    class FakeClient:
+        calls = 0
+
+        async def list_tools(self):
+            return SimpleNamespace(tools=[])
+
+        async def call_tool(self, tool, args):
+            text, err = replies[FakeClient.calls]
+            FakeClient.calls += 1
+            return SimpleNamespace(is_error=err, structured_content=None, content=[SimpleNamespace(text=text)])
+
+    s = connection.GuardedSession("zepto", FakeClient())
+    assert anyio.run(s.call, "search_products", {"query": "x"}) == {"ok": 1} and FakeClient.calls == 3
+    replies[:] = [("Too Many Requests", True)] * 4
+    FakeClient.calls = 0
+    with pytest.raises(RuntimeError, match="Too Many Requests"):
+        anyio.run(s.call, "search_products", {"query": "x"})
+    assert FakeClient.calls == 4  # gives up after the last attempt
+
+
+def test_session_never_has_more_than_4_requests_in_flight():
+    from types import SimpleNamespace
+
+    state = {"open": 0, "peak": 0}
+
+    class SlowClient:
+        async def list_tools(self):
+            return SimpleNamespace(tools=[])
+
+        async def call_tool(self, tool, args):
+            state["open"] += 1
+            state["peak"] = max(state["peak"], state["open"])
+            await anyio.sleep(0.02)
+            state["open"] -= 1
+            return SimpleNamespace(is_error=False, structured_content={"ok": 1}, content=[])
+
+    s = connection.GuardedSession("zepto", SlowClient())
+
+    async def burst():
+        async with anyio.create_task_group() as tg:
+            for i in range(20):
+                tg.start_soon(s.call, "search_products", {"query": str(i)})
+
+    anyio.run(burst)
+    assert state["peak"] == connection.MAX_IN_FLIGHT == 4
