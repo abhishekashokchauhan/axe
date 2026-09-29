@@ -5,3 +5,5 @@ __pycache__/
 .pytest_cache/
 .DS_Store
 *.tmp
+/grocery_list.txt
+/grocery_plan.txt

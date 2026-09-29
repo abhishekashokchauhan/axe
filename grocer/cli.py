@@ -44,7 +44,7 @@ def _dump(name: str, data) -> Path:
 async def cmd_login(platform: str) -> None:
     async with connect(platform) as s:
         tools = await s.list_tools()
-    print(f"{platform}: logged in, {len(tools)} tools: {', '.join(t.name for t in tools)}")
+    print(f"  {platform}: logged in ({len(tools)} tools available)")
 
 
 async def cmd_tools(platform: str) -> None:

@@ -1,5 +1,6 @@
-# Settings for `grocer compare`. Your shopping list itself lives in list_file.
-list_file: ~/Desktop/grocery_list.txt
+# Settings for `grocer compare`. Your shopping list itself lives in list_file
+# (a relative path is inside the axe folder; Setup.command creates it from the sample).
+list_file: grocery_list.txt
 
 platforms:
   zepto: {}

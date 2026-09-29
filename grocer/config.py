@@ -67,10 +67,15 @@ def read_list_file(path: Path) -> list[Item]:
 
 def load_config(path: Path = DEFAULT_CONFIG) -> Config:
     raw = yaml.safe_load(path.read_text())
-    list_file = Path(raw["list_file"]).expanduser() if raw.get("list_file") else None
+    list_file = None
+    if raw.get("list_file"):
+        list_file = Path(raw["list_file"]).expanduser()
+        if not list_file.is_absolute():  # relative paths are inside the axe folder
+            list_file = PROJECT_DIR / list_file
     if list_file:
         if not list_file.exists():
-            raise FileNotFoundError(f"grocery list not found: {list_file}")
+            raise FileNotFoundError(f"grocery list not found: {list_file} "
+                                    f"(copy examples/grocery_list.txt there, or run Setup.command)")
         items = read_list_file(list_file)
     else:
         items = [Item(name=i["name"], brand=i["brand"], size=str(i["size"]), qty=int(i.get("qty", 1)), query=i.get("query"))

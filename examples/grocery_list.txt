@@ -1,0 +1,20 @@
+# My grocery list -- one item per line:
+#
+#     name, pack size[, number of packs]
+#
+# * Name the brand if you care about it ("Amul butter"); leave it out if you don't ("tender coconut").
+# * Pack size needs a unit: g, kg, ml, l, pcs.  e.g. 500g, 1kg, 900ml, 5L, 2 pieces
+# * Number of packs is optional (default 1).
+# * Lines starting with # are ignored.
+#
+# Save this file, then double-click "Grocery Compare.command" in the axe folder.
+
+Amul Gold milk pouch, 500ml
+Tata Tuver dal, 500g
+Dettol liquid refill, 900ml
+Tata groundnut oil, 5L
+Amul butter, 500g
+Amul cheese block, 200g
+Noice idli batter, 1kg
+Tender coconut, 2 pieces
+Harpic toilet cleaner, 1L
