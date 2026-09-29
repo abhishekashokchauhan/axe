@@ -1,0 +1,257 @@
+<title>Gota Price-Tool Audit</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Sans+Condensed:wght@600;700&display=swap">
+<style>
+:root{
+  --paper:#F5F7F6; --card:#FFFFFF; --ink:#18221F; --muted:#5B6A65; --rule:#D9E1DE; --soft:#EDF1EF;
+  --accent:#23508A;
+  --ok:#1D7F4E; --ok-bg:#E3F3EA; --ok-soft:#EEF6F1;
+  --bad:#B63A26; --bad-bg:#FBE6E1;
+  --nt:#7A8581; --nt-bg:#EEF0EF;
+  --uv:#8A6A1C; --uv-bg:#F8F0DB;
+  --mono:"IBM Plex Mono",ui-monospace,Menlo,monospace;
+  --sans:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --cond:"IBM Plex Sans Condensed","IBM Plex Sans",system-ui,sans-serif;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    color-scheme:dark;
+    --paper:#111715; --card:#18201D; --ink:#E6ECE9; --muted:#9AA8A3; --rule:#2B3632; --soft:#1E2724;
+    --accent:#86AEE6;
+    --ok:#5CCB92; --ok-bg:#16301F; --ok-soft:#15241C;
+    --bad:#F08A76; --bad-bg:#3A1C16;
+    --nt:#8E9995; --nt-bg:#232B28;
+    --uv:#D9B55E; --uv-bg:#2F2714;
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --paper:#111715; --card:#18201D; --ink:#E6ECE9; --muted:#9AA8A3; --rule:#2B3632; --soft:#1E2724;
+  --accent:#86AEE6;
+  --ok:#5CCB92; --ok-bg:#16301F; --ok-soft:#15241C;
+  --bad:#F08A76; --bad-bg:#3A1C16;
+  --nt:#8E9995; --nt-bg:#232B28;
+  --uv:#D9B55E; --uv-bg:#2F2714;
+}
+body{background:var(--paper);color:var(--ink);font-family:var(--sans);font-size:15px;line-height:1.5;}
+.wrap{max-width:1080px;margin:0 auto;padding-inline:20px;padding-block:28px 64px;display:flex;flex-direction:column;gap:40px;}
+h1,h2,h3{font-family:var(--cond);margin:0;text-wrap:balance;letter-spacing:-0.01em}
+h1{font-size:clamp(28px,4.4vw,40px);line-height:1.1}
+h2{font-size:24px}
+h3{font-size:19px}
+p{margin:0;max-width:68ch}
+.eyebrow{font-family:var(--mono);font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.muted{color:var(--muted)}
+.num{font-family:var(--mono);font-variant-numeric:tabular-nums}
+header{display:flex;flex-direction:column;gap:12px;border-bottom:1px solid var(--rule);padding-bottom:24px}
+.meta{display:flex;flex-wrap:wrap;gap:8px 20px;font-family:var(--mono);font-size:13px;color:var(--muted)}
+.meta b{color:var(--ink);font-weight:500}
+
+/* scoreboard */
+.scores{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:16px}
+.score{background:var(--card);border:1px solid var(--rule);border-radius:10px;padding:18px;display:flex;flex-direction:column;gap:12px}
+.score .top{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.score .big{font-family:var(--mono);font-size:34px;font-weight:600;line-height:1}
+.score .big small{font-size:15px;color:var(--muted);font-weight:400}
+.bar{height:8px;border-radius:4px;background:var(--bad-bg);overflow:hidden}
+.bar i{display:block;height:100%;background:var(--ok)}
+.split{display:grid;grid-template-columns:auto 1fr auto;gap:4px 10px;font-size:13px;align-items:center}
+.split .mini{height:5px;border-radius:3px;background:var(--bad-bg);overflow:hidden}
+.split .mini i{display:block;height:100%;background:var(--ok)}
+.score .foot{font-size:13px;color:var(--muted);border-top:1px solid var(--rule);padding-top:10px;display:flex;flex-direction:column;gap:4px}
+
+/* findings */
+.findings{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:12px 28px}
+.finding{display:flex;flex-direction:column;gap:4px;padding-top:12px;border-top:2px solid var(--ink)}
+.finding.bad{border-top-color:var(--bad)}
+.finding.ok{border-top-color:var(--ok)}
+.finding h3{font-size:17px}
+.finding p{font-size:14px;color:var(--muted)}
+
+/* legend */
+.legend{display:flex;flex-wrap:wrap;gap:8px 16px;font-size:13px;color:var(--muted);align-items:center}
+
+/* tables */
+.tblwrap{overflow-x:auto;border:1px solid var(--rule);border-radius:10px;background:var(--card)}
+table{border-collapse:collapse;width:100%;min-width:720px}
+th,td{padding:10px 12px;text-align:left;vertical-align:top;border-bottom:1px solid var(--rule)}
+tr:last-child td{border-bottom:0}
+thead th{font-family:var(--mono);font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:500;background:var(--soft)}
+th.item{width:26%}
+td.item{font-weight:500}
+td.item .sku{display:block;font-size:12px;color:var(--muted);font-weight:400}
+.cell{display:flex;flex-direction:column;gap:3px}
+.pill{display:inline-flex;align-items:center;gap:6px;align-self:flex-start;font-family:var(--mono);font-size:12px;font-weight:600;letter-spacing:.04em;padding:2px 8px;border-radius:999px}
+.pill::before{content:"";width:7px;height:7px;border-radius:50%;background:currentColor}
+.T{color:var(--ok);background:var(--ok-bg)}
+.F{color:var(--bad);background:var(--bad-bg)}
+.NT{color:var(--nt);background:var(--nt-bg)}
+.UV{color:var(--uv);background:var(--uv-bg)}
+.cell .d{font-size:12.5px;line-height:1.35;color:var(--muted)}
+.cell .d .num{color:var(--ink)}
+td.F-cell{background:color-mix(in srgb,var(--bad-bg) 45%,transparent)}
+td.uvcol{background:color-mix(in srgb,var(--uv-bg) 35%,transparent)}
+.tool{display:flex;flex-direction:column;gap:14px}
+.toolhead{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:baseline;gap:6px 16px}
+.toolhead .num{font-size:15px}
+.truth td .num{font-size:14px}
+.truth td.na{color:var(--muted)}
+.notes{display:flex;flex-direction:column;gap:8px;font-size:14px;color:var(--muted)}
+.notes li{max-width:90ch}
+.notes ul{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:6px}
+section{display:flex;flex-direction:column;gap:14px}
+</style>
+
+<div class="wrap">
+  <header>
+    <span class="eyebrow">Live audit · quick-commerce price comparators</span>
+    <h1>Do comparison sites show the real price in Gota, Ahmedabad?</h1>
+    <p class="muted">I checked 10 SKUs directly on Blinkit, Zepto and Instamart, then compared what Smartprix, Quick Compare and Comparify reported for each seller. A cell is <b>TRUE</b> when the tool's claim (price, sold out, or not listed) matches what the seller's own site showed at the same address.</p>
+    <div class="meta">
+      <span>Area <b>Gota, Ahmedabad 382481</b></span>
+      <span>Seller prices <b>20:45–21:05 IST</b></span>
+      <span>Tool prices <b>20:58–21:15 IST</b></span>
+      <span>Date <b>28 Sep 2026</b></span>
+    </div>
+  </header>
+
+  <section>
+    <h2>Scorecard</h2>
+    <div class="scores" id="scores"></div>
+  </section>
+
+  <section>
+    <h2>What the test shows</h2>
+    <div class="findings">
+      <div class="finding ok"><h3>Shown prices are mostly current</h3><p>When a tool showed a price for an item the seller stocks, it matched: Smartprix 8 of 8, Quick Compare 15 of 15. Comparify was right on 12 of 15; its three misses were all Zepto, each ₹1 lower than Zepto's own site.</p></div>
+      <div class="finding bad"><h3>Missing listings are the real problem</h3><p>Quick Compare missed Zepto on 6 of the 8 items Zepto sells here. Comparify marks Instamart "Unavailable" at this address and missed all 6 Instamart items that were in stock.</p></div>
+      <div class="finding bad"><h3>A miss can hide the cheapest option</h3><p>Zepto had Tata Simply Better groundnut oil 5L at ₹1,549, versus ₹1,789 on Blinkit and Instamart. Smartprix and Quick Compare didn't list Zepto for it, so they would steer you to a price ₹240 higher.</p></div>
+      <div class="finding bad"><h3>Stock status can be wrong</h3><p>Smartprix and Quick Compare both showed Amul Gold 500ml as out of stock on Instamart, but Instamart listed it in stock at ₹35.</p></div>
+      <div class="finding"><h3>Smartprix's website caps searches</h3><p>After about 12 searches it asked me to log in or install the app, so only 4 of the 10 items could be scored there.</p></div>
+      <div class="finding"><h3>No tool splits your list</h3><p>None of the three takes the whole list and assigns items to stores under each platform's minimum order value. That logic is still yours to build.</p></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>What each seller actually showed</h2>
+    <p class="muted">Logged-out prices on each seller's own website, set to the Gota address. These are the answers every tool was scored against.</p>
+    <div class="tblwrap"><table class="truth" id="truth"></table></div>
+  </section>
+
+  <section>
+    <div class="legend">
+      <span class="pill T">TRUE</span><span>tool matches seller</span>
+      <span class="pill F">FALSE</span><span>wrong price, wrong stock, or item missed</span>
+      <span class="pill UV">UNVERIFIED</span><span>BigBasket; tool's figure shown, couldn't pin BigBasket to this address</span>
+      <span class="pill NT">NOT TESTED</span><span>blocked by login wall</span>
+    </div>
+  </section>
+
+  <div id="tools" style="display:flex;flex-direction:column;gap:40px"></div>
+
+  <section class="notes">
+    <h2 style="color:var(--ink)">How this was tested</h2>
+    <ul>
+      <li>Each item was pinned to one SKU: Amul Gold pouch 500 ml; Tata Sampann Unpolished Toor Dal 500 g; Dettol Original handwash refill 675 ml; Tata Simply Better cold-pressed groundnut oil 5 L; Amul salted butter 500 g; Amul processed cheese block 200 g; NOICE idli-dosa batter 1 kg; tender coconut (per piece); 24 Mantra Organic idli rice 1 kg; Harpic Original 1 L.</li>
+      <li>"Not listed" by the seller was confirmed by scrolling the full search results, since Zepto and Instamart load results lazily.</li>
+      <li>Blinkit doesn't carry the plain Amul processed cheese block here. Its 200 g block is named "Amul Pizza Processed Cheese Block" at ₹129, and every tool matched that listing, so it is treated as the same SKU.</li>
+      <li>NOICE is Instamart's own label. It was sold out there, and Blinkit and Zepto don't stock it.</li>
+      <li>Two seller answers changed on recheck: Zepto's Harpic 1 L (₹208) and 24 Mantra idli rice (₹142) were listed further down the page than the first screen.</li>
+      <li>Account-specific prices (Zepto Pass, Swiggy One, bank offers) aren't reflected on any side.</li>
+      <li>BigBasket's website wouldn't accept the address in the test browser, so BigBasket figures are shown but not scored. The tools agree with each other there (dal ₹118, oil ₹1,994).</li>
+      <li>BuyHatke wasn't scored: it needs its Chrome extension plus logins to Zepto and Amazon.</li>
+    </ul>
+  </section>
+</div>
+
+<script>
+const SELLERS=[["b","Blinkit"],["z","Zepto"],["i","Instamart"],["bb","BigBasket"]];
+const ITEMS=[
+ ["Amul Gold milk","Pouch · 500 ml"],
+ ["Tata Tuver dal","Sampann Unpolished · 500 g"],
+ ["Dettol liquid refill","Original handwash · 675 ml"],
+ ["Tata groundnut oil","Simply Better cold-pressed · 5 L"],
+ ["Amul butter","Salted · 500 g"],
+ ["Amul cheese block","Processed · 200 g"],
+ ["NOICE idli batter","Idli-dosa · 1 kg"],
+ ["Tender coconut","Per piece (buy 2)"],
+ ["Organic idli rice","24 Mantra · 1 kg"],
+ ["Harpic toilet cleaner","Original · 1 L"]
+];
+const TRUTH=[
+ ["₹35","Not sold","₹35"],
+ ["₹103","₹103","₹104"],
+ ["₹101","₹101","Sold out (₹106)"],
+ ["₹1,789","₹1,549","₹1,789"],
+ ["Not sold (unsalted only)","₹310","Not sold (unsalted only)"],
+ ["₹129 (listed as Pizza block)","₹129","₹129"],
+ ["Not sold","Not sold","Sold out"],
+ ["₹85","₹85 (2-pc pack ₹168)","₹93"],
+ ["₹145","₹142","Not sold"],
+ ["₹208","₹208","₹245"]
+];
+// state, tool says, note
+const T=(t,n)=>["T",t,n||""], F=(t,n)=>["F",t,n||""], NT=()=>["NT","",""], UV=(t)=>["UV",t,""];
+const TOOLS=[
+ {name:"Smartprix",url:"smartprix.com/grocery",note:"Scored on 4 items. The website asked for a login after about 12 searches.",cells:[
+  [T("₹35"),T("Not listed"),F("Out of stock","Instamart shows it in stock at ₹35"),UV("₹35")],
+  [T("₹103"),T("₹103"),T("₹104"),UV("₹118")],
+  [T("₹101"),T("₹101"),T("Out of stock","Same panel also listed Skincare and Sensitive variants"),UV("Not listed")],
+  [T("₹1,789"),F("Not listed","Zepto has it at ₹1,549, the cheapest"),T("₹1,789"),UV("₹1,994")],
+  [NT(),NT(),NT(),NT()],[NT(),NT(),NT(),NT()],[NT(),NT(),NT(),NT()],[NT(),NT(),NT(),NT()],[NT(),NT(),NT(),NT()],[NT(),NT(),NT(),NT()]
+ ]},
+ {name:"Quick Compare",url:"quickcompare.in",note:"Every price it showed was correct. It often didn't show Zepto at all.",cells:[
+  [T("₹35"),T("Not listed"),F("Out of stock","Instamart shows it in stock at ₹35"),UV("₹35")],
+  [T("₹103"),F("Not listed","Zepto has it at ₹103"),T("₹104"),UV("₹118")],
+  [T("₹101"),F("Not listed","Zepto has it at ₹101"),T("Out of stock"),UV("₹109")],
+  [T("₹1,789"),F("Not listed","Zepto has it at ₹1,549, the cheapest"),T("₹1,789"),UV("₹1,994")],
+  [T("Not listed"),T("₹310"),T("Not listed"),UV("₹310")],
+  [T("₹129"),F("Not listed","Zepto has it at ₹129"),T("₹129"),UV("Not listed")],
+  [T("Not listed"),T("Not listed"),T("Out of stock"),UV("Not listed")],
+  [T("₹85"),T("₹85"),T("₹93"),UV("₹85")],
+  [T("₹145"),F("Not listed","Zepto has it at ₹142"),T("Not listed"),UV("Not listed")],
+  [T("₹208","Card mislabelled 'Sparkling Lemon'"),F("Not listed","Zepto has it at ₹208"),T("₹245"),UV("₹225.40")]
+ ]},
+ {name:"Comparify",url:"comparify.pro",note:"Shows Instamart as unavailable at this address. Zepto prices ran ₹1 low on 3 items.",cells:[
+  [T("₹35"),T("Not listed"),F("Not listed","Instamart has it at ₹35"),UV("₹35")],
+  [T("₹103"),F("₹102","Zepto shows ₹103"),F("Not listed","Instamart has it at ₹104"),UV("₹118")],
+  [T("₹101"),F("₹100","Zepto shows ₹101"),T("Not listed","Instamart: sold out"),UV("₹218 (buy 1 get 1)")],
+  [T("₹1,789"),T("₹1,549"),F("Not listed","Instamart has it at ₹1,789"),UV("₹1,994")],
+  [T("Not listed"),T("₹310"),T("Not listed"),UV("₹310")],
+  [T("₹129"),F("₹128","Zepto shows ₹129"),F("Not listed","Instamart has it at ₹129"),UV("Not listed")],
+  [T("Not listed"),T("Not listed"),T("Not listed","Instamart: sold out"),UV("Not listed")],
+  [T("₹85"),T("₹85"),F("Not listed","Instamart has it at ₹93"),UV("Not listed")],
+  [T("₹145"),F("Not listed","Zepto has it at ₹142"),T("Not listed"),UV("Not listed")],
+  [T("₹208"),T("₹208"),F("Not listed","Instamart has it at ₹245"),UV("Not listed")]
+ ]}
+];
+
+// ground truth table
+const truth=document.getElementById('truth');
+truth.innerHTML='<thead><tr><th class="item">Item</th><th>Blinkit</th><th>Zepto</th><th>Instamart</th></tr></thead><tbody>'+
+ ITEMS.map((it,r)=>'<tr><td class="item">'+it[0]+'<span class="sku">'+it[1]+'</span></td>'+TRUTH[r].map(v=>{const na=/^Not sold|^Sold out/.test(v);return '<td class="'+(na?'na':'')+'"><span class="num">'+v+'</span></td>'}).join('')+'</tr>').join('')+'</tbody>';
+
+// scores
+const sc=document.getElementById('scores');
+const tools=document.getElementById('tools');
+TOOLS.forEach(tool=>{
+  let tot=0,ok=0; const per={b:[0,0],z:[0,0],i:[0,0]};
+  let shown=0,shownOk=0;
+  tool.cells.forEach((row,r)=>row.slice(0,3).forEach((c,k)=>{
+    if(c[0]==="T"||c[0]==="F"){tot++; const key=SELLERS[k][0]; per[key][1]++; if(c[0]==="T"){ok++;per[key][0]++;}
+      const truthBuyable=/^₹/.test(TRUTH[r][k]); if(truthBuyable && /^₹/.test(c[1])){shown++; if(c[0]==="T")shownOk++;}}
+  }));
+  const pct=Math.round(ok/tot*100);
+  const rows=SELLERS.slice(0,3).map(([k,n])=>{const [a,b]=per[k];const p=b?a/b*100:0;return '<span>'+n+'</span><span class="mini"><i style="width:'+p+'%"></i></span><span class="num">'+a+'/'+b+'</span>'}).join('');
+  sc.insertAdjacentHTML('beforeend','<div class="score"><div class="top"><h3>'+tool.name+'</h3><span class="big">'+ok+'<small>/'+tot+'</small></span></div><div class="bar"><i style="width:'+pct+'%"></i></div><div class="split">'+rows+'</div><div class="foot"><span>'+pct+'% of cells correct</span><span>Prices shown for stocked items: <b class="num">'+shownOk+'/'+shown+'</b> correct</span></div></div>');
+
+  const head='<thead><tr><th class="item">Item</th>'+SELLERS.map(s=>'<th>'+s[1]+'</th>').join('')+'</tr></thead>';
+  const body=tool.cells.map((row,r)=>'<tr><td class="item">'+ITEMS[r][0]+'<span class="sku">'+ITEMS[r][1]+'</span></td>'+row.map((c,k)=>{
+    const [s,t,n]=c; const label={T:"TRUE",F:"FALSE",NT:"NOT TESTED",UV:"UNVERIFIED"}[s];
+    const cls=(s==="F"?"F-cell":"")+(k===3?" uvcol":"");
+    let d=''; if(t) d+='<span>Tool: <span class="num">'+t+'</span></span>'; if(n) d+='<br><span>'+n+'</span>';
+    return '<td class="'+cls+'"><div class="cell"><span class="pill '+s+'">'+label+'</span>'+(d?'<span class="d">'+d+'</span>':'')+'</div></td>';
+  }).join('')+'</tr>').join('');
+  tools.insertAdjacentHTML('beforeend','<section class="tool"><div class="toolhead"><h2>'+tool.name+'</h2><span class="num muted">'+tool.url+' · '+ok+'/'+tot+' correct</span></div><p class="muted">'+tool.note+'</p><div class="tblwrap"><table>'+head+'<tbody>'+body+'</tbody></table></div></section>');
+});
+</script>

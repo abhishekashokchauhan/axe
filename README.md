@@ -13,6 +13,23 @@ on which app** so the total — **fees included** — is as low as possible.
 
 > **macOS only** for now.
 
+## Why axe?
+
+Existing price-comparison sites don't give a reliable answer for a real address. A live
+audit on 28 Sep 2026 in Gota, Ahmedabad checked Smartprix, Quick Compare and Comparify
+against what Blinkit, Zepto and Instamart actually showed for 10 everyday items:
+
+- **Missing listings:** Quick Compare didn't list Zepto for 6 of the 8 items Zepto sells there;
+  Comparify treated Instamart as unavailable and missed all 6 of its in-stock items.
+- **The cheapest option gets hidden:** Tata groundnut oil 5 L was ₹1,549 on Zepto vs ₹1,789
+  elsewhere, and two of the three sites didn't list the Zepto offer.
+- **Wrong stock status:** two sites showed Amul Gold 500 ml out of stock on Instamart while it
+  was in stock at ₹35.
+- **No site splits your list** across apps, and none includes the fees you'd actually pay.
+
+Full evidence, item by item: [`price-audit.html`](price-audit.html) (download or clone the
+repo and open it in a browser).
+
 ---
 
 ## What you get
@@ -140,28 +157,6 @@ Tender coconut, 2 pieces
 - ⚠️ Don't edit your cart in the apps **while** a run is going (a quote may briefly replace it).
 - 🔐 Logins are stored in `~/.grocer/` on your Mac (delete the folder to log out). Your list and
   results stay in the axe folder; product choices are made by Claude through your Claude Code login.
-
-## Settings
-
-`grocery.yaml` in the axe folder:
-
-| Setting | Default | What it does |
-|---|---|---|
-| `list_file` | `grocery_list.txt` (in the axe folder) | where your list lives; absolute paths work too |
-| `platforms.instamart.address_id` | most recent address | pick another saved address (`.venv/bin/python -m grocer addresses`) |
-| `advisor.model` / `advisor.effort` | Claude Code defaults | e.g. `sonnet`, `low` for faster runs |
-| `fees` | `auto` (live bills) | set fees by hand instead (see comments in the file) |
-
-## Troubleshooting
-
-| Problem | Fix |
-|---|---|
-| "Claude Code isn't installed / signed in" | install it, run `claude` in Terminal and sign in, run Setup again |
-| A browser tab opens during a run | that app's login expired — log in again, the run continues |
-| An item says **NOT FOUND** | the report gives Claude's reason; try naming it differently or another pack size |
-| `fees ESTIMATED` in the report | a live bill couldn't be read for that app; its fees were estimated from your past orders |
-| "cart differed after quoting; restored it" | a quote didn't restore cleanly; axe fixed it — check that app's cart |
-| Anything else | run Setup again; it's safe to repeat |
 
 ## Limitations & roadmap
 
