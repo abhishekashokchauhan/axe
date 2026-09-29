@@ -1,0 +1,29 @@
+# Settings for `grocer compare`. Your shopping list itself lives in list_file.
+list_file: ~/Desktop/grocery_list.txt
+
+platforms:
+  zepto: {}
+  instamart:
+    address_id: null  # null = most recently used address; `grocer addresses` lists ids
+
+# Product choice is made by Claude via your local Claude Code login (`claude -p`).
+# Claude picks the product; the program buys your exact size when it is sold, otherwise
+# the best-value pack between 0.75x and 2x your size.
+# Optional: model (e.g. opus, sonnet) and effort (low|medium|high|xhigh|max).
+advisor:
+  model: null
+  effort: null
+
+# Fees: "auto" gets the LIVE bill at run time -- the tool puts the basket in that app's
+# cart, reads the bill (delivery / handling / small-cart / surge / rain fees, GST,
+# membership waivers), then puts the cart back exactly as it was. Orders are never placed.
+# If an app can't be quoted, its fees are estimated from your past orders and the output
+# marks them "fees ESTIMATED". To set fees by hand instead, replace "auto" with e.g.:
+#   instamart:
+#     min_order: 0            # hard minimum; the app won't check out below it
+#     fees:
+#       - {name: delivery fee, amount: 30, below: 299}   # charged when subtotal < 299
+#       - {name: packaging fee, amount: 11}              # always charged
+fees:
+  zepto: auto
+  instamart: auto
